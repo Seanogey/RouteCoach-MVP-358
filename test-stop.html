@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0d1117">
+  <title>Stop Proximity Test</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0d1117;
+      color: #e6edf3;
+      font-family: -apple-system, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100dvh;
+      padding: 24px;
+      gap: 22px;
+      text-align: center;
+    }
+    h1 { font-size: 1rem; opacity: 0.5; letter-spacing: .1em; text-transform: uppercase; }
+    #distance {
+      font-size: 4.5rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em;
+      line-height: 1;
+    }
+    #state-label {
+      font-size: 1.3rem;
+      font-weight: 600;
+      letter-spacing: .12em;
+      padding: 8px 20px;
+      border-radius: 8px;
+      background: #21262d;
+      color: #8b949e;
+      transition: background 0.3s, color 0.3s;
+    }
+    #state-label.inside  { background: #0d3320; color: #3fb950; }
+    #state-label.outside { background: #21262d; color: #8b949e; }
+    #btn-start {
+      padding: 18px 52px;
+      font-size: 1.2rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      background: #238636;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    #btn-start:active  { background: #2ea043; }
+    #btn-start:disabled { background: #21262d; color: #484f58; cursor: default; }
+    #log {
+      width: 100%;
+      max-width: 380px;
+      font-size: 0.82rem;
+      color: #8b949e;
+      text-align: left;
+    }
+    #log p {
+      padding: 5px 0;
+      border-bottom: 1px solid #21262d;
+    }
+    #coords-note { font-size: 0.72rem; opacity: 0.35; }
+  </style>
+</head>
+<body>
+
+  <h1>Stop Proximity Test</h1>
+  <div id="distance">— m</div>
+  <div id="state-label">WAITING</div>
+  <button id="btn-start">TAP TO START</button>
+  <div id="log"></div>
+  <div id="coords-note">Target: -33.922497, 151.187241 &middot; Trigger: 20 m</div>
+
+  <script>
+    'use strict';
+
+    // ── CONFIG ────────────────────────────────────────────────────────────────
+    const TRIGGER_METRES = 20;
+    const STOP_LAT       = -33.922497;
+    const STOP_LNG       = 151.187241;
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // Proximity state machine.
+    // null    = no GPS fix yet; first fix sets baseline silently (no speech).
+    // 'outside' | 'inside' = known zone state; transitions trigger speech.
+    let proximity = null;
+    let watchId   = null;
+    let wakeLock  = null;
+
+    // ── HAVERSINE ─────────────────────────────────────────────────────────────
+    function haversineMetres(lat1, lng1, lat2, lng2) {
+      const R   = 6371000;
+      const toR = x => x * Math.PI / 180;
+      const dLat = toR(lat2 - lat1);
+      const dLng = toR(lng2 - lng1);
+      const a   = Math.sin(dLat / 2) ** 2
+                + Math.cos(toR(lat1)) * Math.cos(toR(lat2)) * Math.sin(dLng / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    // ── SPEECH ────────────────────────────────────────────────────────────────
+    function unlockAudio() {
+      // Must be called synchronously inside a user-gesture handler on iOS.
+      // The silent utterance unlocks speechSynthesis for all subsequent calls.
+      const u = new SpeechSynthesisUtterance(' ');
+      u.volume = 0;
+      speechSynthesis.speak(u);
+    }
+
+    function speak(text) {
+      speechSynthesis.cancel(); // clear any stutter from rapid boundary crossing
+      const utt = new SpeechSynthesisUtterance(text);
+      utt.rate   = 0.95;
+      utt.pitch  = 1.0;
+      utt.volume = 1.0;
+      speechSynthesis.speak(utt);
+      addLog(text);
+    }
+
+    // ── WAKE LOCK ─────────────────────────────────────────────────────────────
+    async function requestWakeLock() {
+      if (!('wakeLock' in navigator)) return;
+      try {
+        wakeLock = await navigator.wakeLock.request('screen');
+      } catch (e) {
+        console.warn('Wake lock failed:', e);
+      }
+    }
+
+    // Re-acquire after the tab returns to the foreground (iOS drops it on blur).
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && watchId !== null) {
+        requestWakeLock();
+      }
+    });
+
+    // ── GPS ───────────────────────────────────────────────────────────────────
+    function onPosition(pos) {
+      const d = haversineMetres(
+        pos.coords.latitude, pos.coords.longitude,
+        STOP_LAT, STOP_LNG
+      );
+
+      document.getElementById('distance').textContent =
+        d < 1000 ? Math.round(d) + ' m' : (d / 1000).toFixed(2) + ' km';
+
+      const inside = d <= TRIGGER_METRES;
+
+      if (proximity === null) {
+        // First fix: establish baseline without speaking.
+        proximity = inside ? 'inside' : 'outside';
+        setStateLabel(proximity);
+        return;
+      }
+
+      if (proximity === 'outside' && inside) {
+        proximity = 'inside';
+        setStateLabel('inside');
+        speak('Sean, you are approaching the 358 bus stop now');
+      } else if (proximity === 'inside' && !inside) {
+        proximity = 'outside';
+        setStateLabel('outside');
+        speak('you are leaving the 358 bus stop');
+      }
+    }
+
+    function onError(err) {
+      addLog('GPS error ' + err.code + ': ' + err.message);
+    }
+
+    // ── UI HELPERS ────────────────────────────────────────────────────────────
+    function setStateLabel(state) {
+      const el = document.getElementById('state-label');
+      if (state === 'inside') {
+        el.textContent = 'INSIDE ZONE';
+        el.className   = 'inside';
+      } else {
+        el.textContent = 'OUTSIDE ZONE';
+        el.className   = 'outside';
+      }
+    }
+
+    function addLog(text) {
+      const p   = document.createElement('p');
+      p.textContent = new Date().toLocaleTimeString() + ' — ' + text;
+      const log = document.getElementById('log');
+      log.prepend(p);
+    }
+
+    // ── START BUTTON ──────────────────────────────────────────────────────────
+    document.getElementById('btn-start').addEventListener('click', () => {
+      unlockAudio();    // synchronous in gesture handler — required by iOS
+      requestWakeLock();
+
+      document.getElementById('btn-start').disabled    = true;
+      document.getElementById('state-label').textContent = 'LOCATING…';
+
+      watchId = navigator.geolocation.watchPosition(onPosition, onError, {
+        enableHighAccuracy: true,
+        maximumAge: 1000,
+        timeout: 15000,
+      });
+    });
+  </script>
+
+</body>
+</html>

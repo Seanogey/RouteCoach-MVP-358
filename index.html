@@ -43,6 +43,11 @@
     </div>
 
   </div>
+  <script>
+    if (new URLSearchParams(location.search).get('test') === 'stop') {
+      location.replace('test-stop.html');
+    }
+  </script>
   <script src="app.js"></script>
 </body>
 </html>
