@@ -1,0 +1,11 @@
+{
+  "name": "RouteCoach 358",
+  "short_name": "RouteCoach",
+  "description": "GPS voice coaching for Bus Route 358",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d1117",
+  "theme_color": "#0d1117",
+  "icons": []
+}

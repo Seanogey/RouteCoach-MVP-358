@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0d1117">
+  <title>RouteCoach 358</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+
+    <header>
+      <div id="route-badge">358</div>
+      <div id="route-info">
+        <div id="route-name">Loading…</div>
+        <div id="direction-name"></div>
+      </div>
+    </header>
+
+    <div id="status-bar">
+      <span id="mode-label">IDLE</span>
+      <span id="distance-display">0 m</span>
+    </div>
+
+    <div id="now-playing" class="hidden">
+      <div class="np-tag">NOW PLAYING</div>
+      <div id="np-text"></div>
+    </div>
+
+    <div id="route-list-wrap">
+      <ul id="route-list"></ul>
+    </div>
+
+    <div id="controls">
+      <button id="btn-start">START</button>
+      <button id="btn-simulate">SIMULATE</button>
+      <button id="btn-stop" disabled>STOP</button>
+      <button id="btn-reset">RESET</button>
+    </div>
+
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

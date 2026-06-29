@@ -1,0 +1,52 @@
+{
+  "_meta": {
+    "dataQuality": "APPROXIMATE - placeholder coordinates for prototype only. Replace geometry and object locations with a real captured GPS trace before any on-road test.",
+    "coverage": "Prototype slice: Sydenham to Mascot (first ~3.4 km of the full loop)."
+  },
+  "routeId": "rt-358",
+  "routeNumber": "358",
+  "routeName": "Sydenham to Randwick (Loop Service) via Mascot",
+  "routeType": "official",
+  "source": "manual",
+  "directions": [
+    {
+      "directionId": "dir-358-loop",
+      "routeId": "rt-358",
+      "name": "Sydenham to Randwick Loop (Sydenham to Mascot slice)",
+      "lifecycleState": "test",
+      "publishedVersion": 1,
+      "geometry": [
+        { "lat": -33.9118, "lng": 151.1665 },
+        { "lat": -33.9131, "lng": 151.1658 },
+        { "lat": -33.9145, "lng": 151.1672 },
+        { "lat": -33.9150, "lng": 151.1686 },
+        { "lat": -33.9163, "lng": 151.1728 },
+        { "lat": -33.9179, "lng": 151.1774 },
+        { "lat": -33.9203, "lng": 151.1819 },
+        { "lat": -33.9224, "lng": 151.1861 },
+        { "lat": -33.9234, "lng": 151.1902 },
+        { "lat": -33.9231, "lng": 151.1939 }
+      ],
+      "routeObjects": [
+        { "objectId": "obj-1", "directionId": "dir-358-loop", "type": "startPoint", "sequence": 1, "location": { "lat": -33.9118, "lng": 151.1665 }, "parameters": { "stopName": "Sydenham Station, Gleeson Ave, Stand E" }, "source": "manual" },
+        { "objectId": "obj-2", "directionId": "dir-358-loop", "type": "busStop", "sequence": 2, "location": { "lat": -33.9131, "lng": 151.1658 }, "parameters": { "stopName": "Sydenham Green, Railway Rd" }, "source": "manual" },
+        { "objectId": "obj-3", "directionId": "dir-358-loop", "type": "turn", "sequence": 3, "location": { "lat": -33.9148, "lng": 151.1680 }, "parameters": { "turnDirection": "left", "intoStreet": "Princes Highway" }, "source": "manual" },
+        { "objectId": "obj-4", "directionId": "dir-358-loop", "type": "busStop", "sequence": 4, "location": { "lat": -33.9150, "lng": 151.1686 }, "parameters": { "stopName": "Princes Hwy at George St" }, "source": "manual" },
+        { "objectId": "obj-5", "directionId": "dir-358-loop", "type": "busStop", "sequence": 5, "location": { "lat": -33.9163, "lng": 151.1728 }, "parameters": { "stopName": "Canal Rd after Princes Hwy" }, "source": "manual" },
+        { "objectId": "obj-6", "directionId": "dir-358-loop", "type": "busStop", "sequence": 6, "location": { "lat": -33.9179, "lng": 151.1774 }, "parameters": { "stopName": "Canal Rd before Burrows Rd" }, "source": "manual" },
+        { "objectId": "obj-7", "directionId": "dir-358-loop", "type": "busStop", "sequence": 7, "location": { "lat": -33.9203, "lng": 151.1819 }, "parameters": { "stopName": "Alexandra Canal, Ricketty St" }, "source": "manual" },
+        { "objectId": "obj-8", "directionId": "dir-358-loop", "type": "busStop", "sequence": 8, "location": { "lat": -33.9224, "lng": 151.1861 }, "parameters": { "stopName": "Kent Rd at Jackson Dr" }, "source": "manual" },
+        { "objectId": "obj-9", "directionId": "dir-358-loop", "type": "busStop", "sequence": 9, "location": { "lat": -33.9234, "lng": 151.1902 }, "parameters": { "stopName": "Coward St after Kent Rd" }, "source": "manual" },
+        { "objectId": "obj-10", "directionId": "dir-358-loop", "type": "busStop", "sequence": 10, "location": { "lat": -33.9231, "lng": 151.1939 }, "parameters": { "stopName": "Mascot Station, Bourke St, Stand C" }, "source": "manual" }
+      ],
+      "locationNotes": [
+        { "noteId": "note-1", "directionId": "dir-358-loop", "category": "mirror", "title": "Pulling out of Stand E", "location": { "lat": -33.9118, "lng": 151.1665 }, "triggerOffsetMetres": 20, "relatedObjectId": "obj-1", "text": { "authoredText": "Pulling out of Stand E, check your right mirror and watch the merge from Gleeson Avenue before you move out." }, "approvalState": "published" },
+        { "noteId": "note-2", "directionId": "dir-358-loop", "category": "lane", "title": "Approach to Princes Highway", "location": { "lat": -33.9148, "lng": 151.1680 }, "triggerOffsetMetres": -120, "relatedObjectId": "obj-3", "text": { "authoredText": "Move into the left lane early on the approach to the Princes Highway turn. It backs up and you do not want to be stuck right." }, "approvalState": "published" },
+        { "noteId": "note-3", "directionId": "dir-358-loop", "category": "hazard", "title": "Canal Rd industrial", "location": { "lat": -33.9171, "lng": 151.1751 }, "triggerOffsetMetres": 0, "relatedObjectId": null, "text": { "authoredText": "Canal Rd is narrow and industrial. Watch for trucks turning into the depots on your right." }, "approvalState": "published" },
+        { "noteId": "note-4", "directionId": "dir-358-loop", "category": "roadPosition", "title": "Coward St near airport", "location": { "lat": -33.9233, "lng": 151.1885 }, "triggerOffsetMetres": 0, "relatedObjectId": null, "text": { "authoredText": "This stretch of Coward St near the airport can bank up. Hold your following distance." }, "approvalState": "published" },
+        { "noteId": "note-5", "directionId": "dir-358-loop", "category": "stop", "title": "Mascot interchange", "location": { "lat": -33.9231, "lng": 151.1939 }, "triggerOffsetMetres": -80, "relatedObjectId": "obj-10", "text": { "authoredText": "Mascot Station is a busy interchange. Expect heavy boarding and allow extra time at the stop." }, "approvalState": "published" }
+      ]
+    }
+  ]
+}
+
