@@ -7,18 +7,23 @@ const ROUTE_FILE          = 'route358.json';
 const SIM_SPEED_MPS       = 40000 / 3600;            // 40 km/h
 const SIM_INTERVAL_MS     = 500;
 const SIM_STEP_M          = SIM_SPEED_MPS * (SIM_INTERVAL_MS / 1000); // ~5.56 m
-const GPS_BACK_TOLERANCE  = 25;                       // metres
+const GPS_BACK_TOLERANCE     = 25;                    // metres (Rule 1)
+const PROJECTION_WINDOW_M    = 150;                   // windowed search radius (Rule 3)
+const HEADING_GATE_DEG       = 90;                    // max heading divergence to accept fix (Rule 4)
+const HEADING_GATE_SPEED_MPS = 2;                     // min speed before heading gate activates (Rule 4)
+const SEGMENT_SKIP_LIMIT     = 2;                     // max segments per GPS update (Rule 2)
 
 // ============================================================
 // STATE
 // ============================================================
 let state = {
-  mode:         'idle',   // 'idle' | 'live' | 'simulating'
-  progress:     0,        // metres along route
-  nextNoteIdx:  0,
-  watchId:      null,
-  simHandle:    null,
-  simPosition:  0,
+  mode:          'idle',  // 'idle' | 'live' | 'simulating'
+  progress:      0,       // metres along route
+  nextNoteIdx:   0,
+  segmentIdx:    0,       // index into objects[] of last passed route object (Rule 2)
+  watchId:       null,
+  simHandle:     null,
+  simPosition:   0,
   audioUnlocked: false,
 };
 
@@ -46,6 +51,19 @@ function haversineMetres(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+function bearingDegs(lat1, lng1, lat2, lng2) {
+  const toR = x => x * Math.PI / 180;
+  const dLng = toR(lng2 - lng1);
+  const x = Math.sin(dLng) * Math.cos(toR(lat2));
+  const y = Math.cos(toR(lat1)) * Math.sin(toR(lat2))
+          - Math.sin(toR(lat1)) * Math.cos(toR(lat2)) * Math.cos(dLng);
+  return (Math.atan2(x, y) * 180 / Math.PI + 360) % 360;
+}
+
+function angleDiff(a, b) {
+  return (b - a + 180 + 360) % 360 - 180;
+}
+
 // ============================================================
 // DISTANCE MODEL
 // ============================================================
@@ -60,13 +78,32 @@ function buildCumDist(geom) {
   return cum;
 }
 
-// Nearest-vertex projection: returns metres along route
-function projectToRoute(lat, lng) {
-  let minD = Infinity, bestIdx = 0;
+// Windowed projection (Rule 3): only search within ±PROJECTION_WINDOW_M of current
+// progress to prevent snapping to the wrong leg of the loop.
+// Falls back to a global search during the initial annotation pass (progress === 0).
+// Heading gate (Rule 4): returns null to discard the fix when the GPS bearing
+// opposes the route direction at the candidate point and speed is sufficient.
+function projectToRoute(lat, lng, heading, speed) {
+  const lo = state.progress - PROJECTION_WINDOW_M;
+  const hi = state.progress + PROJECTION_WINDOW_M;
+
+  let minD = Infinity, bestIdx = -1;
   for (let i = 0; i < geometry.length; i++) {
+    if (state.progress > 0 && (cumDist[i] < lo || cumDist[i] > hi)) continue;
     const d = haversineMetres(lat, lng, geometry[i].lat, geometry[i].lng);
     if (d < minD) { minD = d; bestIdx = i; }
   }
+  if (bestIdx === -1) return null;
+
+  if (speed >= HEADING_GATE_SPEED_MPS && heading != null && !isNaN(heading)) {
+    const nextIdx  = Math.min(bestIdx + 1, geometry.length - 1);
+    const routeBrg = bearingDegs(
+      geometry[bestIdx].lat, geometry[bestIdx].lng,
+      geometry[nextIdx].lat, geometry[nextIdx].lng,
+    );
+    if (Math.abs(angleDiff(heading, routeBrg)) > HEADING_GATE_DEG) return null;
+  }
+
   return cumDist[bestIdx];
 }
 
@@ -175,10 +212,27 @@ function checkTriggers(progressM) {
   }
 }
 
+function segmentForProgress(progressM) {
+  let idx = 0;
+  for (let i = 0; i < objects.length; i++) {
+    if (objects[i].distanceAlongRouteMetres <= progressM) idx = i;
+    else break;
+  }
+  return idx;
+}
+
 function advanceProgress(newM) {
-  // Forward-only guard: reject jumps backwards beyond noise tolerance
+  if (newM === null) return;
+  // Rule 1: forward-only, reject backwards jumps beyond noise tolerance
   if (newM < state.progress - GPS_BACK_TOLERANCE) return;
-  state.progress = Math.max(state.progress, newM);
+  // Rule 2: reject fixes that skip more than SEGMENT_SKIP_LIMIT objects at once
+  const newSegIdx = segmentForProgress(newM);
+  if (newSegIdx - state.segmentIdx > SEGMENT_SKIP_LIMIT) {
+    console.warn(`GPS segment skip rejected: seg ${state.segmentIdx} → ${newSegIdx}`);
+    return;
+  }
+  state.progress   = Math.max(state.progress, newM);
+  state.segmentIdx = Math.max(state.segmentIdx, newSegIdx);
   checkTriggers(state.progress);
   updateUI();
 }
@@ -196,7 +250,10 @@ function startLive() {
   setButtonState();
 
   state.watchId = navigator.geolocation.watchPosition(
-    pos => advanceProgress(projectToRoute(pos.coords.latitude, pos.coords.longitude)),
+    pos => advanceProgress(projectToRoute(
+      pos.coords.latitude,  pos.coords.longitude,
+      pos.coords.heading,   pos.coords.speed,
+    )),
     err  => console.error('GPS error', err.code, err.message),
     { enableHighAccuracy: true, maximumAge: 1000, timeout: 15000 }
   );
@@ -252,6 +309,7 @@ function resetAll() {
   state.mode        = 'idle';
   state.progress    = 0;
   state.nextNoteIdx = 0;
+  state.segmentIdx  = 0;
   state.simPosition = 0;
   setModeLabel('IDLE', '');
   setButtonState();
